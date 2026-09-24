@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portal Logistik & Karyawan (Offline DB - Tanpa Firebase)</title>
+  <meta name="description" content="Portal Manajemen Logistik & Karyawan modern 100% offline tanpa Firebase dengan pelacakan stok, mutasi multi-item IN-OUT, direktori karyawan, grafik, ekspor-impor Excel, dan cadangan JSON." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- SheetJS (xlsx) for Excel Export & Import -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --sidebar-width: 260px;
+      --sidebar-bg: #0f172a;
+      --sidebar-hover: #1e293b;
+      --sidebar-active: #2563eb;
+      --topbar-height: 64px;
+      --body-bg: #f8fafc;
+      --card-border: #e2e8f0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--body-bg);
+      color: #1e293b;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Login Overlay */
+    #loginOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(circle at 80% 20%, #0f172a, #020617 75%);
+      backdrop-filter: blur(12px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: #ffffff;
+      border-radius: 1.25rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
+      padding: 2.25rem;
+    }
+
+    .app-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: var(--sidebar-width);
+      background-color: var(--sidebar-bg);
+      color: #94a3b8;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.25s ease;
+      z-index: 1040;
+    }
+
+    .sidebar .brand {
+      height: var(--topbar-height);
+      display: flex;
+      align-items: center;
+      padding: 0 1.25rem;
+      border-bottom: 1px solid #1e293b;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+
+    .sidebar-menu {
+      padding: 1rem 0.75rem;
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+
+    .nav-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.5rem;
+      font-weight: 700;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.7rem 0.9rem;
+      color: #94a3b8;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      font-size: 0.88rem;
+      margin-bottom: 0.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .sidebar-item:hover {
+      background-color: var(--sidebar-hover);
+      color: #f8fafc;
+    }
+
+    .sidebar-item.active {
+      background-color: var(--sidebar-active);
+      color: #ffffff;
+    }
+
+    .main-content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .topbar {
+      height: var(--topbar-height);
+      background: #ffffff;
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+    }
+
+    .content-body {
+      padding: 1.75rem;
+      flex-grow: 1;
+    }
+
+    .card-modern {
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      border-radius: 0.85rem;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+    }
+
+    .stat-card {
+      border: 1px solid var(--card-border);
+      border-radius: 0.85rem;
+      background: #ffffff;
+      padding: 1.25rem 1.5rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.06);
+    }
+
+    .stat-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+
+    .table thead th {
+      background-color: #f8fafc;
+      color: #475569;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .table tbody td {
+      vertical-align: middle;
+      font-size: 0.88rem;
+    }
+
+    .badge-in { background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+    .badge-out { background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .badge-ready { background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .badge-reorder { background-color: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+
+    @media (max-width: 991.98px) {
+      .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        transform: translateX(-100%);
+      }
+      .sidebar.show { transform: translateX(0); }
+      .sidebar-backdrop {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(2px);
+        z-index: 1030;
+        display: none;
+      }
+      .sidebar-backdrop.show { display: block; }
+      .mobile-bottom-nav { display: flex !important; }
+      .content-body { padding: 1rem; padding-bottom: 5.5rem; }
+    }
+
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 60px;
+      background: #ffffff;
+      border-top: 1px solid var(--card-border);
+      box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+      z-index: 1025;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    .mobile-nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 0.68rem;
+      font-weight: 600;
+      flex: 1;
+      text-decoration: none;
+    }
+
+    .mobile-nav-btn.active { color: #2563eb; }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN OVERLAY -->
+  <div id="loginOverlay">
+    <div class="login-card">
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-3 mb-3 shadow-sm" style="width: 52px; height: 52px;">
+          <i class="fa-solid fa-boxes-stacked fa-xl"></i>
+        </div>
+        <h4 class="fw-bold mb-1">Portal Logistik & Karyawan</h4>
+        <p class="text-muted small">100% Offline Database (Tanpa Firebase Cloud)</p>
+      </div>
+
+      <div id="loginAlert" class="alert alert-danger py-2 small d-none" role="alert">
+        Username atau password salah! Demo: <strong>admin</strong> / <strong>admin123</strong>
+      </div>
+
+      <form id="loginForm">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-secondary">Username</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="fa-regular fa-user"></i></span>
+            <input type="text" id="loginUsername" class="form-control" placeholder="Masukkan username" required>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-secondary">Password</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light text-muted"><i class="fa-solid fa-lock"></i></span>
+            <input type="password" id="loginPassword" class="form-control" placeholder="Masukkan password" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold mt-2">
+          <i class="fa-solid fa-right-to-bracket me-2"></i>Masuk Portal
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- SIDEBAR BACKDROP -->
+  <div id="sidebarBackdrop" class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+  <!-- APP LAYOUT -->
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside id="mainSidebar" class="sidebar">
+      <div class="brand d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+          <i class="fa-solid fa-truck text-primary me-2"></i>
+          <span>JPK-Selatan</span>
+        </div>
+        <button class="btn btn-sm text-secondary d-lg-none" onclick="toggleSidebar()">
+          <i class="fa-solid fa-xmark fa-lg"></i>
+        </button>
+      </div>
+
+      <div class="sidebar-menu">
+        <div class="nav-label">Menu Navigasi</div>
+        <a class="sidebar-item active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+          <i class="fa-solid fa-chart-pie fa-fw"></i><span>Dashboard</span>
+        </a>
+        <a class="sidebar-item" data-tab="tab-barang" onclick="switchTab('tab-barang')">
+          <i class="fa-solid fa-box-open fa-fw"></i><span>Data Barang</span>
+        </a>
+        <a class="sidebar-item" data-tab="tab-mutasi" onclick="switchTab('tab-mutasi')">
+          <i class="fa-solid fa-arrow-right-arrow-left fa-fw"></i><span>Barang IN-OUT</span>
+        </a>
+        <a class="sidebar-item" data-tab="tab-karyawan" onclick="switchTab('tab-karyawan')">
+          <i class="fa-solid fa-users-gear fa-fw"></i><span>Data Karyawan</span>
+        </a>
+
+        <div class="nav-label">Sistem & Penyimpanan</div>
+        <a class="sidebar-item" data-tab="tab-akun" onclick="switchTab('tab-akun')">
+          <i class="fa-solid fa-user-shield fa-fw"></i><span>Manajemen Akun</span>
+        </a>
+        <a class="sidebar-item" onclick="openDatabaseModal()">
+          <i class="fa-solid fa-hard-drive fa-fw text-success"></i><span>Database & Cadangan</span>
+        </a>
+      </div>
+
+      <div class="p-3 border-top border-dark">
+        <div class="d-flex align-items-center justify-content-between text-secondary small">
+          <span class="badge bg-success-subtle text-success border border-success-subtle">
+            <i class="fa-solid fa-circle-dot me-1"></i>Offline DB Aktif
+          </span>
+          <button class="btn btn-sm btn-outline-danger" onclick="handleLogout()" title="Keluar">
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEWPORT -->
+    <div class="main-content">
+      <header class="topbar">
+        <div class="d-flex align-items-center gap-3">
+          <button class="btn btn-light d-lg-none border" onclick="toggleSidebar()">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div>
+            <h5 class="mb-0 fw-bold" id="pageTitle">Dashboard Ringkasan</h5>
+            <small class="text-muted d-none d-sm-inline">Pengawasan Stok Logistik & Personalia Karyawan (Tanpa Firebase)</small>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+          <button class="btn btn-sm btn-light border d-none d-sm-flex align-items-center gap-1" onclick="openDatabaseModal()">
+            <i class="fa-solid fa-hard-drive text-success"></i>
+            <span>Cadangan DB</span>
+          </button>
+          <div class="dropdown">
+            <button class="btn btn-light rounded-circle border p-0 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;" data-bs-toggle="dropdown">
+              <i class="fa-solid fa-user-check text-primary"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+              <li><h6 class="dropdown-header" id="profileDropdownHeader">admin</h6></li>
+              <li><a class="dropdown-item" href="#" onclick="openDatabaseModal()"><i class="fa-solid fa-hard-drive me-2"></i>Cadangan Database</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="#" onclick="handleLogout()"><i class="fa-solid fa-power-off me-2"></i>Logout</a></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+
+      <main class="content-body">
+        <!-- TAB 1: DASHBOARD -->
+        <section id="tab-dashboard" class="tab-pane-content">
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="stat-card d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-muted small fw-semibold text-uppercase">Total Jenis Barang</div>
+                  <div class="h3 fw-bold mb-0 mt-1" id="statTotalBarang">0</div>
+                  <small class="text-muted">Item terdaftar</small>
+                </div>
+                <div class="stat-icon-wrapper bg-primary-subtle text-primary">
+                  <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="stat-card d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-muted small fw-semibold text-uppercase">Barang Ready</div>
+                  <div class="h3 fw-bold mb-0 mt-1 text-success" id="statBarangReady">0</div>
+                  <small class="text-muted">Stok aman & siap</small>
+                </div>
+                <div class="stat-icon-wrapper bg-success-subtle text-success">
+                  <i class="fa-solid fa-circle-check"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="stat-card d-flex align-items-center justify-content-between" style="cursor: pointer;" onclick="openModalPersediaanKritis()">
+                <div>
+                  <div class="text-muted small fw-semibold text-uppercase">Barang Re-Order</div>
+                  <div class="h3 fw-bold mb-0 mt-1 text-warning" id="statBarangReorder">0</div>
+                  <small class="text-warning">Perlu dipesan ulang &rarr;</small>
+                </div>
+                <div class="stat-icon-wrapper bg-warning-subtle text-warning">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="stat-card d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-muted small fw-semibold text-uppercase">Total Transaksi</div>
+                  <div class="h3 fw-bold mb-0 mt-1 text-info" id="statTotalTransaksi">0</div>
+                  <small class="text-muted">Mutasi IN & OUT</small>
+                </div>
+                <div class="stat-icon-wrapper bg-info-subtle text-info">
+                  <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-12 col-lg-8">
+              <div class="card-modern p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                  <div>
+                    <h6 class="fw-bold mb-0">Rekapitulasi Barang Masuk & Keluar per Bulan</h6>
+                    <small class="text-muted">Grafik tren logistik bulanan</small>
+                  </div>
+                  <span class="badge bg-light text-dark border">Tahun 2026</span>
+                </div>
+                <div style="height: 280px; position: relative;">
+                  <canvas id="monthlyChart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-4">
+              <div class="card-modern p-4 h-100 d-flex flex-column justify-content-between">
+                <div>
+                  <h6 class="fw-bold mb-0">Status Persediaan Kritis</h6>
+                  <small class="text-muted">Item perlu dipesan ulang segera</small>
+                </div>
+                <div class="my-auto py-3 text-center cursor-pointer" onclick="openModalPersediaanKritis()" style="cursor: pointer;">
+                  <div class="d-inline-flex align-items-center justify-content-center bg-danger text-white rounded-circle mb-3 shadow-sm" style="width: 54px; height: 54px;">
+                    <i class="fa-solid fa-triangle-exclamation fa-xl"></i>
+                  </div>
+                  <div class="text-muted small fw-bold text-uppercase">Jumlah Barang Kritis</div>
+                  <div class="display-5 fw-bold text-danger mb-1 font-monospace" id="statJumlahKritisBig">0</div>
+                  <button type="button" class="btn btn-sm btn-outline-danger px-3 py-1 fw-semibold rounded-pill mt-2">
+                    <i class="fa-solid fa-file-excel me-1"></i>Buka Rincian & Ekspor
+                  </button>
+                </div>
+                <div class="text-muted small pt-2 border-top text-center">
+                  100% Tersimpan di database lokal Anda
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-modern p-4">
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+              <h6 class="fw-bold mb-0"><i class="fa-solid fa-list-check me-2 text-primary"></i>5 Mutasi Terakhir</h6>
+              <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-danger" id="btnHapusSemuaMutasiDashboard" onclick="handleHapusSemuaTransaksi()">
+                  <i class="fa-solid fa-trash me-1"></i>Hapus Semua
+                </button>
+                <button class="btn btn-sm btn-outline-primary" onclick="switchTab('tab-mutasi')">Lihat Semua Mutasi</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Waktu</th>
+                    <th>Tipe</th>
+                    <th>Nama Barang</th>
+                    <th>Jumlah</th>
+                    <th>PIC</th>
+                    <th>Sisa Stok</th>
+                    <th class="text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="recentTransactionsTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: DATA BARANG -->
+        <section id="tab-barang" class="tab-pane-content d-none">
+          <div class="card-modern p-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+              <div>
+                <h5 class="fw-bold mb-1">Daftar Stok Barang (Offline Database)</h5>
+                <small class="text-muted">Pelacakan stok tanpa ketergantungan Firebase</small>
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-success" onclick="exportBarangToExcel()">
+                  <i class="fa-solid fa-file-excel me-1"></i>Ekspor Excel
+                </button>
+                <button class="btn btn-primary" onclick="openModalTambahBarang()">
+                  <i class="fa-solid fa-plus me-1"></i>Tambah Barang
+                </button>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3 align-items-center">
+              <div class="col-12 col-md-5">
+                <input type="text" id="searchBarangInput" class="form-control form-control-sm" placeholder="Cari kode atau nama barang..." oninput="renderTableBarang()">
+              </div>
+              <div class="col-12 col-md-7 d-flex align-items-center gap-1 flex-wrap">
+                <span class="small text-muted me-1"><i class="fa-solid fa-filter me-1"></i>Filter Kategori:</span>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button type="button" class="btn btn-outline-primary active" id="btnFilterKatALL" onclick="setKategoriFilter('ALL')">Semua</button>
+                  <button type="button" class="btn btn-outline-primary" id="btnFilterKatATK" onclick="setKategoriFilter('ATK')">ATK</button>
+                  <button type="button" class="btn btn-outline-warning" id="btnFilterKatConsumable" onclick="setKategoriFilter('Consumable')">Consumable</button>
+                </div>
+                <select id="filterKategoriBarang" class="d-none" onchange="renderTableBarang()">
+                  <option value="ALL">Semua Kategori</option>
+                  <option value="ATK">ATK</option>
+                  <option value="Consumable">Consumable</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Kode</th>
+                    <th>Nama Barang</th>
+                    <th>Kategori</th>
+                    <th>Stok</th>
+                    <th>Satuan</th>
+                    <th>Min Stok</th>
+                    <th>Status</th>
+                    <th>Lokasi Rak</th>
+                    <th class="text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBarangBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: MUTASI -->
+        <section id="tab-mutasi" class="tab-pane-content d-none">
+          <div class="row g-4">
+            <div class="col-12 col-xl-5">
+              <div class="card-modern p-4">
+                <h6 class="fw-bold mb-3"><i class="fa-solid fa-arrow-right-arrow-left text-primary me-2"></i>Form Mutasi</h6>
+                <form id="formTransaksiMutasi" onsubmit="handleSimpanTransaksi(event)">
+                  <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary">Tipe Mutasi</label>
+                    <div class="d-flex gap-2">
+                      <input type="radio" class="btn-check" name="tipeMutasi" id="tipeIN" value="IN" checked>
+                      <label class="btn btn-outline-success flex-fill fw-semibold py-2" for="tipeIN">Barang MASUK (IN)</label>
+                      <input type="radio" class="btn-check" name="tipeMutasi" id="tipeOUT" value="OUT">
+                      <label class="btn btn-outline-danger flex-fill fw-semibold py-2" for="tipeOUT">Barang KELUAR (OUT)</label>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary">Pilih Barang</label>
+                    <select id="selectMutasiBarang" class="form-select form-select-sm" required></select>
+                  </div>
+
+                  <div class="row g-2 mb-3">
+                    <div class="col-6">
+                      <label class="form-label small fw-semibold text-secondary">Jumlah</label>
+                      <input type="number" id="mutasiQty" class="form-control form-control-sm" min="1" value="1" required>
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label small fw-semibold text-secondary">PIC</label>
+                      <select id="selectMutasiKaryawan" class="form-select form-select-sm" required></select>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label small fw-semibold text-secondary">Keterangan / Keperluan</label>
+                    <input type="text" id="mutasiKeterangan" class="form-control form-control-sm" placeholder="Catatan keperluan mutasi...">
+                  </div>
+
+                  <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Simpan Mutasi
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div class="col-12 col-xl-7">
+              <div class="card-modern p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                  <h6 class="fw-bold mb-0">Riwayat Mutasi</h6>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-success" onclick="exportMutasiToExcel()">
+                      <i class="fa-solid fa-file-excel me-1"></i>Ekspor Excel
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="handleHapusSemuaMutasi()">
+                      <i class="fa-solid fa-trash me-1"></i>Hapus Semua
+                    </button>
+                  </div>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Waktu</th>
+                        <th>Tipe</th>
+                        <th>Barang</th>
+                        <th>Qty</th>
+                        <th>Sisa</th>
+                        <th>PIC</th>
+                        <th class="text-center">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tableMutasiBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 4: KARYAWAN -->
+        <section id="tab-karyawan" class="tab-pane-content d-none">
+          <div class="card-modern p-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+              <div>
+                <h5 class="fw-bold mb-1">Data Karyawan & Personalia</h5>
+                <small class="text-muted">Daftar staf penanggung jawab inventaris</small>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline-success" onclick="exportKaryawanToExcel()">
+                  <i class="fa-solid fa-file-excel me-1"></i>Ekspor Excel
+                </button>
+                <button class="btn btn-primary" onclick="openModalTambahKaryawan()">
+                  <i class="fa-solid fa-user-plus me-1"></i>Tambah Karyawan
+                </button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Badge</th>
+                    <th>Nama</th>
+                    <th>Departemen</th>
+                    <th>Jabatan</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th class="text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tableKaryawanBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 5: AKUN -->
+        <section id="tab-akun" class="tab-pane-content d-none">
+          <div class="card-modern p-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+              <div>
+                <h5 class="fw-bold mb-1">Manajemen Akun Pengguna</h5>
+                <small class="text-muted">Kelola akun staf & administrator sistem</small>
+              </div>
+              <button class="btn btn-primary" onclick="openModalTambahAkun()">
+                <i class="fa-solid fa-user-plus me-1"></i>Tambah Akun
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Nama Lengkap</th>
+                    <th>Peran</th>
+                    <th>Status</th>
+                    <th class="text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tableAkunBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV (MOBILE) -->
+  <nav class="mobile-bottom-nav">
+    <button type="button" class="mobile-nav-btn active" data-tab="tab-dashboard" onclick="switchTab('tab-dashboard')">
+      <i class="fa-solid fa-chart-pie"></i><span>Beranda</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-barang" onclick="switchTab('tab-barang')">
+      <i class="fa-solid fa-box-open"></i><span>Barang</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-mutasi" onclick="switchTab('tab-mutasi')">
+      <i class="fa-solid fa-arrow-right-arrow-left"></i><span>IN-OUT</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-karyawan" onclick="switchTab('tab-karyawan')">
+      <i class="fa-solid fa-users"></i><span>Karyawan</span>
+    </button>
+    <button type="button" class="mobile-nav-btn" data-tab="tab-akun" onclick="switchTab('tab-akun')">
+      <i class="fa-solid fa-user-shield"></i><span>Akun</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: TAMBAH BARANG -->
+  <div class="modal fade" id="modalTambahBarang" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-box-open text-primary me-2"></i>Tambah Barang Baru</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="formTambahBarang" onsubmit="handleSimpanBarang(event)">
+          <div class="modal-body p-4 space-y-3">
+            <div class="row g-2 mb-3">
+              <div class="col-5">
+                <label class="form-label small fw-semibold text-secondary">Kode Barang</label>
+                <input type="text" id="tambahBarangKode" class="form-control form-control-sm font-monospace fw-bold" required>
+              </div>
+              <div class="col-7">
+                <label class="form-label small fw-semibold text-secondary">Kategori</label>
+                <select id="tambahBarangKategori" class="form-select form-select-sm" required>
+                  <option value="ATK">ATK</option>
+                  <option value="Consumable">Consumable</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Nama Barang</label>
+              <input type="text" id="tambahBarangNama" class="form-control form-control-sm" placeholder="Contoh: Kertas HVS A4" required>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-4">
+                <label class="form-label small fw-semibold text-secondary">Stok Awal</label>
+                <input type="number" id="tambahBarangStok" class="form-control form-control-sm" min="0" value="10" required>
+              </div>
+              <div class="col-4">
+                <label class="form-label small fw-semibold text-secondary">Min. Stok</label>
+                <input type="number" id="tambahBarangMinStok" class="form-control form-control-sm" min="1" value="5" required>
+              </div>
+              <div class="col-4">
+                <label class="form-label small fw-semibold text-secondary">Satuan</label>
+                <input type="text" id="tambahBarangSatuan" class="form-control form-control-sm" value="Pcs" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold text-secondary">Lokasi Rak / Gudang</label>
+              <input type="text" id="tambahBarangLokasi" class="form-control form-control-sm" value="Gudang A - Rak 01" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+            <button type="submit" class="btn btn-primary btn-sm fw-semibold"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan Barang</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DATABASE & CADANGAN (MASTER EXCEL & JSON) -->
+  <div class="modal fade" id="modalDatabase" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="fa-solid fa-hard-drive text-success me-2"></i>Database & Sinkronisasi Master</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-success d-flex align-items-center mb-3 py-2">
+            <i class="fa-solid fa-circle-check fa-lg me-2"></i>
+            <div><strong>Penyimpanan Lokal Aktif:</strong> Data tersimpan secara offline di peramban tanpa Firebase.</div>
+          </div>
+
+          <ul class="nav nav-pills mb-3" id="dbModalPills" role="tablist">
+            <li class="nav-item">
+              <button class="nav-link active fw-semibold" id="tab-db-excel" data-bs-toggle="pill" data-bs-target="#pill-db-excel" type="button">
+                <i class="fa-solid fa-file-excel text-success me-1"></i>Sinkronisasi Master Excel
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link fw-semibold" id="tab-db-json" data-bs-toggle="pill" data-bs-target="#pill-db-json" type="button">
+                <i class="fa-solid fa-file-code text-primary me-1"></i>Cadangan JSON
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="dbModalPillsContent">
+            <!-- PILL 1: MASTER EXCEL SYNC -->
+            <div class="tab-pane fade show active" id="pill-db-excel">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-col justify-content-between">
+                    <div>
+                      <h6 class="fw-bold mb-1"><i class="fa-solid fa-download text-success me-2"></i>1. Ekspor Master Excel</h6>
+                      <p class="small text-muted mb-3">Unduh workbook Excel (Sheet: MASTER_BARANG, MASTER_KARYAWAN, RIWAYAT_MUTASI).</p>
+                    </div>
+                    <div>
+                      <button class="btn btn-success w-100 mb-2" onclick="exportMasterExcelOffline()">
+                        <i class="fa-solid fa-file-arrow-down me-1"></i>Unduh Master Excel (.xlsx)
+                      </button>
+                      <button class="btn btn-outline-secondary btn-sm w-100" onclick="downloadTemplateMasterOffline()">
+                        <i class="fa-solid fa-file-excel me-1"></i>Unduh Template Kosong
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <div class="p-3 border rounded-3 bg-light h-100 d-flex flex-col justify-content-between">
+                    <div>
+                      <h6 class="fw-bold mb-1"><i class="fa-solid fa-rotate text-primary me-2"></i>2. Unggah & Sinkronkan</h6>
+                      <p class="small text-muted mb-3">Unggah file master yang telah diedit di Excel untuk memperbarui data barang & staf.</p>
+                    </div>
+                    <div>
+                      <label class="btn btn-primary w-100 cursor-pointer">
+                        <i class="fa-solid fa-upload me-1"></i>Pilih File Master Excel
+                        <input type="file" accept=".xlsx, .xls, .csv" class="d-none" onchange="syncMasterExcelOffline(event)">
+                      </label>
+                      <small class="text-muted d-block text-center mt-1">Otomatis mencocokkan Kode & Badge</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PILL 2: JSON BACKUP -->
+            <div class="tab-pane fade" id="pill-db-json">
+              <div class="d-grid gap-2">
+                <button class="btn btn-outline-primary py-2 text-start" onclick="exportJsonBackup()">
+                  <i class="fa-solid fa-download me-2"></i><strong>Unduh Cadangan Database (.json)</strong>
+                  <div class="small text-muted">Simpan seluruh stok, mutasi, karyawan & akun ke file JSON</div>
+                </button>
+                <label class="btn btn-outline-success py-2 text-start cursor-pointer">
+                  <i class="fa-solid fa-upload me-2"></i><strong>Pulihkan Database dari JSON</strong>
+                  <div class="small text-muted">Muat kembali data cadangan yang pernah diunduh</div>
+                  <input type="file" accept=".json" class="d-none" onchange="importJsonBackup(event)">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <button class="btn btn-outline-danger btn-sm" onclick="resetFactoryData()">
+              <i class="fa-solid fa-rotate-left me-1"></i>Reset ke Data Demo Bawaan
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    const DEFAULT_BARANG = [
+      { id: "b1", kode: "BRG-001", nama: "Barcode Scanner Handheld 2D", kategori: "Consumable", stok: 18, minStok: 5, satuan: "Unit", lokasi: "Gudang A - Rak 01" },
+      { id: "b2", kode: "BRG-002", nama: "Pallet Handjack Hydraulic 3 Ton", kategori: "Consumable", stok: 3, minStok: 2, satuan: "Unit", lokasi: "Area Bongkar B" },
+      { id: "b3", kode: "BRG-003", nama: "Lakban Fragile 2 Inch Merah", kategori: "Consumable", stok: 120, minStok: 25, satuan: "Roll", lokasi: "Gudang B - Rak 04" },
+      { id: "b4", kode: "BRG-004", nama: "Kertas Thermal Struk 80x80", kategori: "ATK", stok: 4, minStok: 10, satuan: "Roll", lokasi: "Gudang A - Rak 02" },
+      { id: "b5", kode: "BRG-005", nama: "Sepatu Safety Steel Toe Size 42", kategori: "Consumable", stok: 2, minStok: 6, satuan: "Pasang", lokasi: "Loker APD - Rak 01" }
+    ];
+
+    const DEFAULT_KARYAWAN = [
+      { id: "k1", badge: "KRY-001", nama: "Budi Santoso", dept: "Logistik & Gudang", jabatan: "Supervisor Logistik", email: "budi.santoso@jpkselatan.com", status: "Aktif" },
+      { id: "k2", badge: "KRY-002", nama: "Siti Rahmawati", dept: "Logistik & Gudang", jabatan: "Admin Inventory", email: "siti.rahma@jpkselatan.com", status: "Aktif" },
+      { id: "k3", badge: "KRY-003", nama: "Ahmad Fauzi", dept: "Operasional", jabatan: "Koordinator Lapangan", email: "ahmad.fauzi@jpkselatan.com", status: "Aktif" }
+    ];
+
+    const DEFAULT_TRANSAKSI = [
+      { id: "t1", tanggal: "2026-09-20 09:15", tipe: "IN", barangId: "b1", kode: "BRG-001", nama: "Barcode Scanner Handheld 2D", qty: 5, stokAwal: 13, stokAkhir: 18, pic: "Budi Santoso", keterangan: "Penerimaan rutin dari Vendor" },
+      { id: "t2", tanggal: "2026-09-21 11:30", tipe: "OUT", barangId: "b4", kode: "BRG-004", nama: "Kertas Thermal Struk 80x80", qty: 6, stokAwal: 10, stokAkhir: 4, pic: "Siti Rahmawati", keterangan: "Permintaan Divisi Kasir" }
+    ];
+
+    const DEFAULT_AKUN = [
+      { id: "u1", username: "admin", nama: "Administrator", role: "Super Admin", status: "Aktif" },
+      { id: "u2", username: "staff", nama: "Staff Logistik", role: "Staff Logistik", status: "Aktif" }
+    ];
+
+    let state = {
+      barang: [],
+      karyawan: [],
+      transaksi: [],
+      akun: [],
+      currentUser: null,
+      chartInstance: null
+    };
+
+    function cleanKet(s) {
+      if (!s) return "-";
+      let res = s.replace(/^Doc:\s*[^|]+\|\s*/i, '').replace(/\bPO\s*#?\s*[0-9a-zA-Z_-]+/gi, '').trim();
+      if (res.startsWith('|')) res = res.substring(1).trim();
+      if (res.endsWith('|')) res = res.substring(0, res.length - 1).trim();
+      return res || "-";
+    }
+
+    function initData() {
+      state.barang = JSON.parse(localStorage.getItem("jpk_offline_barang")) || [...DEFAULT_BARANG];
+      state.karyawan = JSON.parse(localStorage.getItem("jpk_offline_karyawan")) || [...DEFAULT_KARYAWAN];
+      const rawTx = JSON.parse(localStorage.getItem("jpk_offline_transaksi")) || [...DEFAULT_TRANSAKSI];
+      state.transaksi = rawTx.map(t => ({ ...t, keterangan: cleanKet(t.keterangan) }));
+      state.akun = JSON.parse(localStorage.getItem("jpk_offline_akun")) || [...DEFAULT_AKUN];
+      saveLocal();
+    }
+
+    function saveLocal() {
+      localStorage.setItem("jpk_offline_barang", JSON.stringify(state.barang));
+      localStorage.setItem("jpk_offline_karyawan", JSON.stringify(state.karyawan));
+      localStorage.setItem("jpk_offline_transaksi", JSON.stringify(state.transaksi));
+      localStorage.setItem("jpk_offline_akun", JSON.stringify(state.akun));
+    }
+
+    function checkAuth() {
+      const sess = sessionStorage.getItem("jpk_offline_session");
+      if (sess) {
+        state.currentUser = JSON.parse(sess);
+        document.getElementById("loginOverlay").classList.add("d-none");
+        refreshUI();
+      } else {
+        document.getElementById("loginOverlay").classList.remove("d-none");
+      }
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const u = document.getElementById("loginUsername").value.trim().toLowerCase();
+      const p = document.getElementById("loginPassword").value.trim();
+
+      if ((u === "admin" && (p === "admin123" || p === "admin")) || (u === "staff" && (p === "staff123" || p === "staff"))) {
+        state.currentUser = { username: u, nama: u === "admin" ? "Administrator" : "Staff", role: u === "admin" ? "Super Admin" : "Staff Logistik" };
+        sessionStorage.setItem("jpk_offline_session", JSON.stringify(state.currentUser));
+        document.getElementById("loginOverlay").classList.add("d-none");
+        refreshUI();
+      } else {
+        document.getElementById("loginAlert").classList.remove("d-none");
+      }
+    });
+
+    function handleLogout() {
+      sessionStorage.removeItem("jpk_offline_session");
+      location.reload();
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".sidebar-item").forEach(i => i.classList.remove("active"));
+      document.querySelectorAll(`[data-tab='${tabId}']`).forEach(i => i.classList.add("active"));
+      document.querySelectorAll(".tab-pane-content").forEach(p => p.classList.add("d-none"));
+      const target = document.getElementById(tabId);
+      if (target) target.classList.remove("d-none");
+      toggleSidebar(false);
+    }
+
+    function toggleSidebar(force) {
+      const sb = document.getElementById("mainSidebar");
+      const bd = document.getElementById("sidebarBackdrop");
+      if (force === false) {
+        sb.classList.remove("show");
+        bd.classList.remove("show");
+      } else {
+        sb.classList.toggle("show");
+        bd.classList.toggle("show");
+      }
+    }
+
+    function refreshUI() {
+      // Dashboard Stats
+      document.getElementById("statTotalBarang").innerText = state.barang.length;
+      document.getElementById("statBarangReady").innerText = state.barang.filter(b => b.stok > b.minStok).length;
+      const reorder = state.barang.filter(b => b.stok <= b.minStok).length;
+      document.getElementById("statBarangReorder").innerText = reorder;
+      document.getElementById("statTotalTransaksi").innerText = state.transaksi.length;
+      document.getElementById("statJumlahKritisBig").innerText = reorder;
+
+      // Recent Transactions
+      const btnHapusSemuaDash = document.getElementById("btnHapusSemuaMutasiDashboard");
+      if (btnHapusSemuaDash) {
+        btnHapusSemuaDash.style.display = state.transaksi.length === 0 ? "none" : "inline-flex";
+      }
+
+      document.getElementById("recentTransactionsTable").innerHTML = state.transaksi.slice(0, 5).map(t => `
+        <tr>
+          <td class="small text-muted font-monospace">${t.tanggal}</td>
+          <td><span class="badge ${t.tipe === 'IN' ? 'badge-in' : 'badge-out'}">${t.tipe}</span></td>
+          <td class="fw-semibold">${t.nama}</td>
+          <td class="fw-bold ${t.tipe === 'IN' ? 'text-success' : 'text-danger'}">${t.tipe === 'IN' ? '+' : '-'}${t.qty}</td>
+          <td>${t.pic}</td>
+          <td class="fw-bold">${t.stokAkhir}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="handleHapusTransaksi('${t.id}')" title="Hapus mutasi ini">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `).join("") || '<tr><td colspan="7" class="text-center py-3 text-muted">Belum ada transaksi</td></tr>';
+
+      // Table Barang
+      renderTableBarang();
+
+      // Mutasi Select Options
+      document.getElementById("selectMutasiBarang").innerHTML = state.barang.map(b => `<option value="${b.id}">${b.kode} - ${b.nama} (Stok: ${b.stok})</option>`).join("");
+      document.getElementById("selectMutasiKaryawan").innerHTML = state.karyawan.map(k => `<option value="${k.nama}">${k.badge} - ${k.nama}</option>`).join("");
+
+      // Table Mutasi
+      document.getElementById("tableMutasiBody").innerHTML = state.transaksi.length === 0 ? `
+        <tr><td colspan="7" class="text-center text-muted py-4">Belum ada riwayat mutasi.</td></tr>
+      ` : state.transaksi.map(t => `
+        <tr>
+          <td class="small font-monospace">${t.tanggal}</td>
+          <td><span class="badge ${t.tipe === 'IN' ? 'badge-in' : 'badge-out'}">${t.tipe}</span></td>
+          <td>${t.nama}</td>
+          <td class="fw-bold">${t.qty}</td>
+          <td>${t.stokAkhir}</td>
+          <td>${t.pic}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="handleHapusTransaksi('${t.id}')" title="Hapus mutasi ini">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `).join("");
+
+      // Table Karyawan
+      document.getElementById("tableKaryawanBody").innerHTML = state.karyawan.map(k => `
+        <tr>
+          <td class="font-monospace fw-bold text-primary">${k.badge}</td>
+          <td class="fw-semibold">${k.nama}</td>
+          <td>${k.dept}</td>
+          <td>${k.jabatan}</td>
+          <td>${k.email}</td>
+          <td><span class="badge bg-success-subtle text-success">${k.status}</span></td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-danger" onclick="hapusKaryawan('${k.id}')"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join("");
+
+      // Table Akun
+      document.getElementById("tableAkunBody").innerHTML = state.akun.map(a => `
+        <tr>
+          <td class="font-monospace fw-bold">@${a.username}</td>
+          <td>${a.nama}</td>
+          <td><span class="badge bg-primary-subtle text-primary">${a.role}</span></td>
+          <td><span class="badge bg-success-subtle text-success">${a.status}</span></td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-danger" onclick="hapusAkun('${a.id}')"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join("");
+
+      renderChart();
+    }
+
+    function setKategoriFilter(kat) {
+      const select = document.getElementById("filterKategoriBarang");
+      if (select) select.value = kat;
+      document.getElementById("btnFilterKatALL")?.classList.toggle("active", kat === "ALL");
+      document.getElementById("btnFilterKatATK")?.classList.toggle("active", kat === "ATK");
+      document.getElementById("btnFilterKatConsumable")?.classList.toggle("active", kat === "Consumable");
+      renderTableBarang();
+    }
+
+    function renderTableBarang() {
+      const q = (document.getElementById("searchBarangInput")?.value || "").toLowerCase();
+      const kat = document.getElementById("filterKategoriBarang")?.value || "ALL";
+      const filtered = state.barang.filter(b => (b.nama.toLowerCase().includes(q) || b.kode.toLowerCase().includes(q)) && (kat === "ALL" || b.kategori === kat));
+
+      document.getElementById("tableBarangBody").innerHTML = filtered.length === 0 ? `
+        <tr><td colspan="9" class="text-center py-4 text-muted">Tidak ada data barang yang sesuai filter kategori "${kat}".</td></tr>
+      ` : filtered.map(b => `
+        <tr>
+          <td class="font-monospace fw-bold">${b.kode}</td>
+          <td class="fw-semibold">${b.nama}</td>
+          <td>
+            <span class="badge ${b.kategori === 'ATK' ? 'bg-primary-subtle text-primary border border-primary-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'}" style="cursor:pointer" onclick="setKategoriFilter('${b.kategori}')" title="Filter kategori ${b.kategori}">
+              <i class="fa-solid fa-tag me-1"></i>${b.kategori}
+            </span>
+          </td>
+          <td class="fw-bold">${b.stok}</td>
+          <td>${b.satuan}</td>
+          <td>${b.minStok}</td>
+          <td><span class="badge ${b.stok > b.minStok ? 'badge-ready' : 'badge-reorder'}">${b.stok > b.minStok ? 'Ready' : 'Re-Order'}</span></td>
+          <td>${b.lokasi}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline-danger" onclick="hapusBarang('${b.id}')"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function openModalTambahBarang() {
+      const nextIdx = state.barang.length + 1;
+      document.getElementById("tambahBarangKode").value = `BRG-${String(nextIdx).padStart(3, '0')}`;
+      document.getElementById("tambahBarangNama").value = "";
+      document.getElementById("tambahBarangKategori").value = "ATK";
+      document.getElementById("tambahBarangStok").value = 10;
+      document.getElementById("tambahBarangMinStok").value = 5;
+      document.getElementById("tambahBarangSatuan").value = "Pcs";
+      document.getElementById("tambahBarangLokasi").value = "Gudang A - Rak 01";
+      new bootstrap.Modal(document.getElementById("modalTambahBarang")).show();
+    }
+
+    function handleSimpanBarang(e) {
+      e.preventDefault();
+      const kode = document.getElementById("tambahBarangKode").value.trim().toUpperCase();
+      const nama = document.getElementById("tambahBarangNama").value.trim();
+      const kategori = document.getElementById("tambahBarangKategori").value;
+      const stok = parseInt(document.getElementById("tambahBarangStok").value, 10) || 0;
+      const minStok = parseInt(document.getElementById("tambahBarangMinStok").value, 10) || 1;
+      const satuan = document.getElementById("tambahBarangSatuan").value.trim() || "Pcs";
+      const lokasi = document.getElementById("tambahBarangLokasi").value.trim() || "Gudang Utama";
+
+      if (!kode || !nama) {
+        alert("Kode dan Nama barang wajib diisi!");
+        return;
+      }
+
+      state.barang.push({
+        id: "b_" + Date.now(),
+        kode,
+        nama,
+        kategori,
+        stok,
+        minStok,
+        satuan,
+        lokasi
+      });
+
+      saveLocal();
+      refreshUI();
+      bootstrap.Modal.getInstance(document.getElementById("modalTambahBarang"))?.hide();
+      alert(`Barang "${nama}" (${kategori}) berhasil ditambahkan!`);
+    }
+
+    function hapusBarang(id) {
+      if (confirm("Hapus barang ini dari database?")) {
+        state.barang = state.barang.filter(b => b.id !== id);
+        saveLocal();
+        refreshUI();
+      }
+    }
+
+    function handleSimpanTransaksi(e) {
+      e.preventDefault();
+      const tipe = document.querySelector('input[name="tipeMutasi"]:checked').value;
+      const bId = document.getElementById("selectMutasiBarang").value;
+      const qty = parseInt(document.getElementById("mutasiQty").value, 10) || 1;
+      const pic = document.getElementById("selectMutasiKaryawan").value;
+      const ket = document.getElementById("mutasiKeterangan")?.value.trim() || "-";
+
+      const b = state.barang.find(i => i.id === bId);
+      if (!b) return;
+
+      const stokAwal = b.stok;
+      const stokAkhir = tipe === 'IN' ? stokAwal + qty : stokAwal - qty;
+
+      b.stok = stokAkhir;
+      state.transaksi.unshift({
+        id: 't_' + Date.now(),
+        tanggal: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        tipe,
+        barangId: b.id,
+        kode: b.kode,
+        nama: b.nama,
+        qty,
+        stokAwal,
+        stokAkhir,
+        pic,
+        keterangan: ket
+      });
+
+      saveLocal();
+      refreshUI();
+      alert(`Mutasi ${tipe} berhasil disimpan!`);
+    }
+
+    function handleHapusTransaksi(id) {
+      const t = state.transaksi.find(tx => tx.id === id);
+      if (!t) return;
+      if (!confirm(`Hapus data riwayat mutasi ${t.tipe} (${t.nama})?`)) return;
+
+      const rollbackStock = confirm(`Apakah Anda ingin MENGEMBALIKAN (Rollback) stok barang di gudang?\n\n- OK: Ya, kembalikan stok (+${t.qty} / -${t.qty})\n- Cancel: Hanya hapus catatan riwayat tanpa mengubah kuantitas stok gudang`);
+
+      if (rollbackStock) {
+        const b = state.barang.find(item => item.id === t.barangId);
+        if (b) {
+          const diff = t.tipe === 'IN' ? -t.qty : t.qty;
+          b.stok = Math.max(0, b.stok + diff);
+        }
+      }
+
+      state.transaksi = state.transaksi.filter(tx => tx.id !== id);
+      saveLocal();
+      refreshUI();
+      alert("Riwayat transaksi mutasi berhasil dihapus.");
+    }
+
+    function handleHapusSemuaMutasi() {
+      if (state.transaksi.length === 0) {
+        alert("Riwayat mutasi sudah kosong.");
+        return;
+      }
+      if (!confirm(`Apakah Anda yakin ingin menghapus SELURUH (${state.transaksi.length}) riwayat transaksi mutasi IN-OUT?`)) {
+        return;
+      }
+      const rollback = confirm("Apakah Anda juga ingin MENGEMBALIKAN (Rollback) stok seluruh barang ke kondisi sebelum mutasi?\n\n- OK: Ya, rollback stok seluruh barang\n- Cancel: Hanya bersihkan log riwayat (stok gudang tetap)");
+
+      if (rollback) {
+        state.transaksi.forEach(t => {
+          const b = state.barang.find(item => item.id === t.barangId);
+          if (b) {
+            const diff = t.tipe === 'IN' ? -t.qty : t.qty;
+            b.stok = Math.max(0, b.stok + diff);
+          }
+        });
+      }
+
+      state.transaksi = [];
+      saveLocal();
+      refreshUI();
+      alert("Seluruh riwayat transaksi mutasi berhasil dihapus.");
+    }
+
+    function exportBarangToExcel() {
+      const ws = XLSX.utils.json_to_sheet(state.barang);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Stok Barang");
+      XLSX.writeFile(wb, "Data_Stok_Barang.xlsx");
+    }
+
+    function exportMutasiToExcel() {
+      const ws = XLSX.utils.json_to_sheet(state.transaksi);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Mutasi");
+      XLSX.writeFile(wb, "Riwayat_Mutasi.xlsx");
+    }
+
+    function exportKaryawanToExcel() {
+      const ws = XLSX.utils.json_to_sheet(state.karyawan);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Karyawan");
+      XLSX.writeFile(wb, "Data_Karyawan.xlsx");
+    }
+
+    function exportMasterExcelOffline() {
+      const wb = XLSX.utils.book_new();
+      const wsB = XLSX.utils.json_to_sheet(state.barang.map((b, i) => ({
+        'No': i + 1,
+        'Kode Barang': b.kode,
+        'Nama Barang': b.nama,
+        'Kategori': b.kategori,
+        'Stok': b.stok,
+        'Satuan': b.satuan,
+        'Batas Minimum Stok': b.minStok,
+        'Lokasi Rak': b.lokasi
+      })));
+      XLSX.utils.book_append_sheet(wb, wsB, "MASTER_BARANG");
+
+      const wsK = XLSX.utils.json_to_sheet(state.karyawan.map((k, i) => ({
+        'No': i + 1,
+        'ID Badge': k.badge,
+        'Nama Karyawan': k.nama,
+        'Departemen': k.dept,
+        'Jabatan': k.jabatan,
+        'Email / Kontak': k.email,
+        'Status': k.status
+      })));
+      XLSX.utils.book_append_sheet(wb, wsK, "MASTER_KARYAWAN");
+
+      const wsM = XLSX.utils.json_to_sheet(state.transaksi.map((t, i) => ({
+        'No': i + 1,
+        'Tanggal': t.tanggal,
+        'Tipe': t.tipe,
+        'Kode Barang': t.kode,
+        'Nama Barang': t.nama,
+        'Qty': t.qty,
+        'PIC': t.pic,
+        'Keterangan': t.keterangan
+      })));
+      XLSX.utils.book_append_sheet(wb, wsM, "RIWAYAT_MUTASI");
+
+      XLSX.writeFile(wb, "Master_Database_Logistik_JPK.xlsx");
+    }
+
+    function downloadTemplateMasterOffline() {
+      const wb = XLSX.utils.book_new();
+      const contohB = [{
+        'Kode Barang': 'BRG-001',
+        'Nama Barang': 'Kardus Box Single Wall',
+        'Kategori': 'Perlengkapan Gudang',
+        'Stok': 100,
+        'Satuan': 'Pcs',
+        'Batas Minimum Stok': 20,
+        'Lokasi Rak': 'Gudang A - Rak 01'
+      }];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(contohB), "MASTER_BARANG");
+      const contohK = [{
+        'ID Badge': 'KRY-001',
+        'Nama Karyawan': 'Budi Santoso',
+        'Departemen': 'Logistik & Gudang',
+        'Jabatan': 'Supervisor Logistik',
+        'Email / Kontak': 'budi.santoso@jpkselatan.com',
+        'Status': 'Aktif'
+      }];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(contohK), "MASTER_KARYAWAN");
+      XLSX.writeFile(wb, "Template_Master_Database_JPK.xlsx");
+    }
+
+    function syncMasterExcelOffline(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const wb = XLSX.read(data, { type: 'array' });
+          let updatedBarang = 0;
+          let addedBarang = 0;
+          let updatedKaryawan = 0;
+          let addedKaryawan = 0;
+
+          // Sync Barang
+          const bSheet = wb.Sheets["MASTER_BARANG"] || wb.Sheets["Stok Barang"] || wb.Sheets[wb.SheetNames[0]];
+          if (bSheet) {
+            const rows = XLSX.utils.sheet_to_json(bSheet);
+            rows.forEach((row, idx) => {
+              const kode = row["Kode Barang"] || row["Kode"] || row["kode"];
+              const nama = row["Nama Barang"] || row["Nama"] || row["nama"];
+              if (!kode && !nama) return;
+              const fKode = (kode || `BRG-${100 + idx}`).trim();
+              const fNama = (nama || 'Barang').trim();
+              const fKat = row["Kategori"] || 'Umum';
+              const fStok = parseInt(row["Stok"] || row["Stok Saat Ini"] || 0, 10) || 0;
+              const fMin = parseInt(row["Batas Minimum Stok"] || row["Min Stok"] || 5, 10) || 5;
+              const fSat = row["Satuan"] || 'Pcs';
+              const fLok = row["Lokasi Rak"] || row["Lokasi"] || 'Gudang Utama';
+
+              const existingIdx = state.barang.findIndex(b => b.kode.toUpperCase() === fKode.toUpperCase());
+              if (existingIdx !== -1) {
+                state.barang[existingIdx].nama = fNama;
+                state.barang[existingIdx].kategori = fKat;
+                state.barang[existingIdx].stok = fStok;
+                state.barang[existingIdx].minStok = fMin;
+                state.barang[existingIdx].satuan = fSat;
+                state.barang[existingIdx].lokasi = fLok;
+                updatedBarang++;
+              } else {
+                state.barang.push({
+                  id: "b_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+                  kode: fKode,
+                  nama: fNama,
+                  kategori: fKat,
+                  stok: fStok,
+                  minStok: fMin,
+                  satuan: fSat,
+                  lokasi: fLok
+                });
+                addedBarang++;
+              }
+            });
+          }
+
+          // Sync Karyawan
+          const kSheet = wb.Sheets["MASTER_KARYAWAN"] || wb.Sheets["Data Karyawan"] || (wb.SheetNames.length > 1 ? wb.Sheets[wb.SheetNames[1]] : null);
+          if (kSheet) {
+            const rowsK = XLSX.utils.sheet_to_json(kSheet);
+            rowsK.forEach((row, idx) => {
+              const badge = row["ID Badge"] || row["Badge"] || row["badge"];
+              const nama = row["Nama Karyawan"] || row["Nama"] || row["nama"];
+              if (!badge && !nama) return;
+              const fBadge = (badge || `KRY-${100 + idx}`).trim();
+              const fNama = (nama || 'Karyawan').trim();
+              const fDept = row["Departemen"] || 'Operasional';
+              const fJab = row["Jabatan"] || 'Staff';
+              const fEmail = row["Email / Kontak"] || row["Email"] || '-';
+              const fStatus = String(row["Status"] || 'Aktif').includes('Non') ? 'Nonaktif' : 'Aktif';
+
+              const existingIdx = state.karyawan.findIndex(k => k.badge.toUpperCase() === fBadge.toUpperCase());
+              if (existingIdx !== -1) {
+                state.karyawan[existingIdx].nama = fNama;
+                state.karyawan[existingIdx].dept = fDept;
+                state.karyawan[existingIdx].jabatan = fJab;
+                state.karyawan[existingIdx].email = fEmail;
+                state.karyawan[existingIdx].status = fStatus;
+                updatedKaryawan++;
+              } else {
+                state.karyawan.push({
+                  id: "k_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+                  badge: fBadge,
+                  nama: fNama,
+                  dept: fDept,
+                  jabatan: fJab,
+                  email: fEmail,
+                  status: fStatus
+                });
+                addedKaryawan++;
+              }
+            });
+          }
+
+          saveLocal();
+          refreshUI();
+          alert(`Sinkronisasi Master Excel Berhasil!\n- Barang: ${updatedBarang} diupdate, ${addedBarang} baru\n- Karyawan: ${updatedKaryawan} diupdate, ${addedKaryawan} baru`);
+        } catch (err) {
+          alert("Gagal memproses file Excel: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function exportJsonBackup() {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "Backup_Logistik_Offline.json";
+      a.click();
+    }
+
+    function importJsonBackup(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const r = new FileReader();
+      r.onload = (evt) => {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          if (parsed.barang) state.barang = parsed.barang;
+          if (parsed.karyawan) state.karyawan = parsed.karyawan;
+          if (parsed.transaksi) state.transaksi = parsed.transaksi;
+          if (parsed.akun) state.akun = parsed.akun;
+          saveLocal();
+          refreshUI();
+          alert("Database berhasil dipulihkan!");
+        } catch (err) {
+          alert("Gagal membaca file JSON!");
+        }
+      };
+      r.readAsText(file);
+    }
+
+    function resetFactoryData() {
+      if (confirm("Reset seluruh data ke pengaturan awal bawaan?")) {
+        localStorage.clear();
+        initData();
+        refreshUI();
+      }
+    }
+
+    function openDatabaseModal() {
+      new bootstrap.Modal(document.getElementById("modalDatabase")).show();
+    }
+
+    function renderChart() {
+      const ctx = document.getElementById("monthlyChart");
+      if (!ctx) return;
+      if (state.chartInstance) state.chartInstance.destroy();
+
+      const inData = [35, 42, 28, 55, 60, 48, 70, 65, 82, 0, 0, 0];
+      const outData = [25, 30, 22, 40, 45, 38, 52, 58, 64, 0, 0, 0];
+
+      state.transaksi.forEach(t => {
+        const parts = (t.tanggal || '').split('-');
+        if (parts.length >= 2) {
+          const mIdx = parseInt(parts[1], 10) - 1;
+          if (mIdx >= 0 && mIdx < 12) {
+            if (t.tipe === 'IN') inData[mIdx] += (t.qty || 0);
+            else outData[mIdx] += (t.qty || 0);
+          }
+        }
+      });
+
+      state.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+          datasets: [
+            { label: 'Masuk (IN)', data: inData, backgroundColor: '#10b981', borderRadius: 4 },
+            { label: 'Keluar (OUT)', data: outData, backgroundColor: '#ef4444', borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                footer: function(items) {
+                  const idx = items[0].dataIndex;
+                  const diff = inData[idx] - outData[idx];
+                  return 'Net Selisih: ' + (diff >= 0 ? '+' : '') + diff + ' Unit';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      initData();
+      checkAuth();
+    });
+  </script>
+</body>
+</html>

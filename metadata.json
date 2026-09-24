@@ -1,0 +1,6 @@
+{
+  "name": "Portal Logistik & Karyawan",
+  "description": "Sistem Manajemen Logistik dan Personalia modern tanpa Firebase dengan pelacakan stok real-time, mutasi multi-item IN-OUT, direktori karyawan, ekspor-impor Excel, dan pencadangan data lokal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
